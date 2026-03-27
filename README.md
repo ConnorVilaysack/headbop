@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# headbop
+
+AI-powered music generator for teachers. Turn your lesson plans into catchy, memorable songs that help students learn.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- A [KIE AI](https://kie.ai) API key for music generation
+
+### Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Configure your environment — edit `.env` and add your KIE API key:
+
+```
+DATABASE_URL="file:<absolute-path-to-project>/prisma/dev.db"
+KIE_API_KEY="your-actual-api-key"
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"
+```
+
+3. Initialize the database:
+
+```bash
+npx prisma migrate dev
+```
+
+4. Start the dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to use the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How It Works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Create** — Enter your lesson's key points, pick a subject and music style
+2. **Generate** — AI creates a catchy educational song using KIE AI (Suno)
+3. **Save** — Songs are automatically saved to your library for reuse
+4. **Library** — Browse, play, search, and manage your song collection
 
-## Learn More
+## Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Framework**: Next.js 16 (App Router)
+- **Styling**: Tailwind CSS
+- **Database**: SQLite via Prisma
+- **Music AI**: KIE AI (Suno API)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Callback Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For production, set `NEXT_PUBLIC_BASE_URL` to your deployed URL so that KIE AI can send generation callbacks. For local development, use a tunnel service (e.g. ngrok) or the app will poll for status updates.
