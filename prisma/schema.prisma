@@ -4,12 +4,14 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Song {
   id        String   @id @default(uuid())
+  userId    String?
   title     String
   subject   String
   keyPoints String
@@ -24,4 +26,7 @@ model Song {
   status    String   @default("pending")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([userId, taskId])
 }

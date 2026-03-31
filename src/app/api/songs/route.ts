@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/auth";
+import { listSongsByUser } from "@/lib/songs-store";
 
 export async function GET() {
   try {
-    const songs = await prisma.song.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const songs = await listSongsByUser(user.id);
     return NextResponse.json(songs);
   } catch (error) {
     console.error("Fetch songs error:", error);

@@ -1,16 +1,22 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AudioPlayer } from "@/components/AudioPlayer";
+import { getAuthenticatedUser } from "@/lib/auth";
+import { getSongByIdForUser } from "@/lib/songs-store";
 import { getVibeLabel } from "@/lib/vibes";
-import { prisma } from "@/lib/db";
 
 export default async function SongPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    redirect("/auth");
+  }
+
   const { id } = await params;
-  const song = await prisma.song.findUnique({ where: { id } });
+  const song = await getSongByIdForUser(user.id, id);
   if (!song) notFound();
 
   return (

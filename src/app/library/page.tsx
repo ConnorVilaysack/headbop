@@ -3,19 +3,44 @@
 import { useState, useEffect, useCallback } from "react";
 import { SongCard, SongData } from "@/components/SongCard";
 import Link from "next/link";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function LibraryPage() {
   const [songs, setSongs] = useState<SongData[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [needsAuth, setNeedsAuth] = useState(false);
 
   const fetchSongs = useCallback(async () => {
     try {
       const res = await fetch("/api/songs");
+      if (res.status === 401) {
+        setNeedsAuth(true);
+        return;
+      }
       if (res.ok) setSongs(await res.json());
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) {
+      setNeedsAuth(true);
+      setLoading(false);
+      return;
+    }
+    supabase.auth
+      .getUser()
+      .then((result) => {
+        setNeedsAuth(!result.data.user);
+        setLoading(false);
+      })
+      .catch(() => {
+        setNeedsAuth(true);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => { fetchSongs(); }, [fetchSongs]);
@@ -69,7 +94,20 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {loading ? (
+      {needsAuth ? (
+        <div className="text-center py-24 animate-fade-up">
+          <h2 className="text-xl font-semibold text-white mb-2">Sign in to view your library</h2>
+          <p className="text-white/40 mb-8 max-w-sm mx-auto">
+            Your tracks are now tied to your account.
+          </p>
+          <Link
+            href="/auth"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gold to-gold-dark text-black font-semibold rounded-xl"
+          >
+            Go to Sign in
+          </Link>
+        </div>
+      ) : loading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-6 animate-fade-in">
           <div className="flex items-end gap-1.5 h-10">
             {[0, 1, 2, 3, 4].map((i) => (

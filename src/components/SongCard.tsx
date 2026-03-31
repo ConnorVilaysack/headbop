@@ -25,6 +25,31 @@ interface SongCardProps {
   index?: number;
 }
 
+/** Deterministic bar height — `Math.random()` breaks SSR/client hydration. */
+function barHeightPercent(songId: string, barIndex: number): number {
+  let h = 2166136261;
+  for (let k = 0; k < songId.length; k++) {
+    const code = songId.charCodeAt(k);
+    h ^= code;
+    h = Math.imul(h, 16777619);
+  }
+  h ^= barIndex * 374761393;
+  h >>>= 0;
+  const jitter = (h % 21) / 100;
+  return 20 + Math.sin(barIndex * 0.8) * 30 + jitter * 20;
+}
+
+function formatSongDateUtc(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(d);
+}
+
 export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
   const styleLabel = getVibeLabel(song.style);
 
@@ -52,7 +77,7 @@ export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
                   <div
                     key={i}
                     className="w-1.5 bg-white/60 rounded-full"
-                    style={{ height: `${20 + Math.sin(i * 0.8) * 30 + Math.random() * 20}%` }}
+                    style={{ height: `${barHeightPercent(song.id, i)}%` }}
                   />
                 ))}
               </div>
@@ -97,7 +122,7 @@ export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
 
           <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
             <span className="text-[11px] text-white/25">
-              {new Date(song.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              {formatSongDateUtc(song.createdAt)}
             </span>
             {onDelete && (
               <button

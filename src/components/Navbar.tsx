@@ -1,10 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { posthogIdentify, posthogReset } from "@/lib/posthog-user";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let mounted = true;
+    supabase.auth.getUser().then((result) => {
+      if (!mounted) return;
+      const user = result.data.user;
+      setEmail(user?.email ?? null);
+      if (user?.id) posthogIdentify(user.id, { email: user.email });
+    }).catch(() => {
+      if (!mounted) return;
+      setEmail(null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const user = session?.user;
+      setEmail(user?.email ?? null);
+      if (user?.id) posthogIdentify(user.id, { email: user.email });
+      else if (event === "SIGNED_OUT") posthogReset();
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  const onSignOut = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    posthogReset();
+    router.push("/auth");
+    router.refresh();
+  };
 
   return (
     <nav className="sticky top-0 z-50 backdrop-blur-2xl bg-black/70 border-b border-white/[0.06]">
@@ -41,6 +79,24 @@ export function Navbar() {
               </svg>
               Library
             </NavLink>
+            {email ? (
+              <>
+                <span className="hidden sm:inline text-xs text-white/35 px-2">
+                  {email}
+                </span>
+                <button
+                  type="button"
+                  onClick={onSignOut}
+                  className="relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-white/50 hover:text-white cursor-pointer"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <NavLink href="/auth" active={pathname === "/auth"}>
+                Sign in
+              </NavLink>
+            )}
           </div>
         </div>
       </div>

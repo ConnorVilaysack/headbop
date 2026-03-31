@@ -7,6 +7,7 @@ AI-powered music generator for teachers. Turn your lesson plans into catchy, mem
 ### Prerequisites
 
 - Node.js 20+
+- A Supabase project (Auth + Postgres)
 - A [KIE AI](https://kie.ai) API key for music generation
 
 ### Setup
@@ -17,18 +18,22 @@ AI-powered music generator for teachers. Turn your lesson plans into catchy, mem
 npm install
 ```
 
-2. Configure your environment — edit `.env` and add your KIE API key:
+2. Configure your environment — copy `.env.example` to `.env` and fill in Supabase + KIE values:
 
 ```
-DATABASE_URL="file:<absolute-path-to-project>/prisma/dev.db"
-KIE_API_KEY="your-actual-api-key"
+DATABASE_URL="postgresql://..."
+DIRECT_URL="postgresql://..."
+NEXT_PUBLIC_SUPABASE_URL="https://<project-ref>.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
+KIE_API_KEY="..."
 NEXT_PUBLIC_BASE_URL="http://localhost:3000"
 ```
 
-3. Initialize the database:
+3. Initialize the Supabase table:
 
 ```bash
-npx prisma migrate dev
+# In Supabase Dashboard -> SQL Editor, run:
+# supabase/setup.sql
 ```
 
 4. Start the dev server:
@@ -50,7 +55,8 @@ Open [http://localhost:3000](http://localhost:3000) to use the app.
 
 - **Framework**: Next.js 16 (App Router)
 - **Styling**: Tailwind CSS
-- **Database**: SQLite via Prisma
+- **Database**: Supabase Postgres
+- **Auth**: Supabase Auth (email/password)
 - **Music AI**: KIE AI (Suno API)
 
 ## Callback Setup

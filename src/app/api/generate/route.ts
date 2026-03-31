@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/auth";
 import { findArtist } from "@/lib/artist-inspirations";
+import { createSong } from "@/lib/songs-store";
 import { getVibeLabel } from "@/lib/vibes";
 import {
   buildLyricsApiPrompt,
@@ -26,6 +27,11 @@ function normalizeKeyPoints(raw: string): string[] {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { title, subject, keyPoints, style, vocalGender, artistId } = body;
 
@@ -142,19 +148,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const taskId = kieData.data?.taskId;
+    const taskId = kieData.data?.taskId as string | undefined;
+    if (!taskId || typeof taskId !== "string") {
+      return NextResponse.json(
+        { error: "Music API did not return a taskId; cannot track this song." },
+        { status: 502 }
+      );
+    }
 
-    const song = await prisma.song.create({
-      data: {
-        title,
-        subject,
-        keyPoints,
-        style,
-        artistInspiration: artist.title,
-        prompt: lyricsText,
-        taskId,
-        status: "generating",
-      },
+    const song = await createSong({
+      userId: user.id,
+      title,
+      subject,
+      keyPoints,
+      style,
+      artistInspiration: artist.title,
+      prompt: lyricsText,
+      taskId,
+      status: "generating",
     });
 
     const requestPreview = {
