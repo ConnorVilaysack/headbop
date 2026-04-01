@@ -4,6 +4,11 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArtistInspirationPicker } from "@/components/ArtistInspirationPicker";
 import { StyleSelector } from "@/components/StyleSelector";
+import {
+  clearCreateFormDraft,
+  loadCreateFormDraft,
+  saveCreateFormDraft,
+} from "@/lib/create-form-draft";
 import { getVibeLabel } from "@/lib/vibes";
 import { VoiceSelector } from "@/components/VoiceSelector";
 import { GeneratingAnimation } from "@/components/GeneratingAnimation";
@@ -61,6 +66,8 @@ export default function CreatePage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [billingError, setBillingError] = useState("");
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [restoredDraftNotice, setRestoredDraftNotice] = useState(false);
+  const draftRestoreDone = useRef(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = useCallback(() => {
@@ -71,6 +78,27 @@ export default function CreatePage() {
   }, []);
 
   useEffect(() => () => stopPolling(), [stopPolling]);
+
+  useEffect(() => {
+    if (draftRestoreDone.current) return;
+    const d = loadCreateFormDraft();
+    if (!d) return;
+    const hasContent =
+      d.title.trim() ||
+      d.subject.trim() ||
+      d.keyPoints.trim() ||
+      d.style ||
+      d.artistId;
+    if (!hasContent) return;
+    draftRestoreDone.current = true;
+    setTitle(d.title);
+    setSubject(d.subject);
+    setKeyPoints(d.keyPoints);
+    setStyle(d.style);
+    setArtistId(d.artistId);
+    setVocalGender(d.vocalGender);
+    setRestoredDraftNotice(true);
+  }, []);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -150,6 +178,7 @@ export default function CreatePage() {
             // Some callbacks mark completed before audioUrl is attached.
             // Don't drop back to the form until we actually have playable audio.
             if (song.audioUrl) {
+              clearCreateFormDraft();
               setIsGenerating(false);
               stopPolling();
             }
@@ -222,6 +251,7 @@ export default function CreatePage() {
 
   const handleReset = useCallback(() => {
     stopPolling();
+    clearCreateFormDraft();
     setTitle("");
     setSubject("");
     setKeyPoints("");
@@ -254,6 +284,27 @@ export default function CreatePage() {
           Drop in your key concepts, pick a vibe, and let AI compose a track
           your students will have stuck in their heads all week.
         </p>
+        {restoredDraftNotice ? (
+          <div className="mt-6 max-w-xl mx-auto flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-left animate-fade-up">
+            <span className="text-emerald-400 text-lg leading-none mt-0.5" aria-hidden>
+              ✓
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white/90 font-medium">Your song details were restored</p>
+              <p className="text-xs text-white/50 mt-0.5">
+                We kept your title, topic, and key points from before checkout. You can edit or generate when you&apos;re ready.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRestoredDraftNotice(false)}
+              className="text-white/40 hover:text-white text-xs shrink-0 px-1"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {showAuthGate ? (
@@ -617,6 +668,14 @@ export default function CreatePage() {
                       setBillingError("");
                       setCheckoutLoading(true);
                       try {
+                        saveCreateFormDraft({
+                          title,
+                          subject,
+                          keyPoints,
+                          style,
+                          artistId,
+                          vocalGender,
+                        });
                         const res = await fetch("/api/stripe/checkout", { method: "POST" });
                         const j = await res.json();
                         if (!res.ok) throw new Error(j?.error || "Failed to start checkout");

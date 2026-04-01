@@ -40,18 +40,47 @@ export async function POST(req: NextRequest) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        // The subscription will be handled by subscription.updated, but we can backfill customer id.
         const session = event.data.object as Stripe.Checkout.Session;
-        const userId =
+        const userIdFromSession =
           (session.client_reference_id as string | undefined) ??
-          (session.metadata?.supabase_user_id as string | undefined);
+          (session.metadata?.supabase_user_id as string | undefined) ??
+          null;
         const customerId = (session.customer as string | null) ?? null;
-        if (userId && customerId) {
+
+        if (userIdFromSession && customerId) {
           await upsertBillingCustomer({
-            userId,
+            userId: userIdFromSession,
             stripeCustomerId: customerId,
             priceId: STRIPE_PRICE_ID,
           });
+        }
+
+        // Immediately sync subscription status so the paywall can unlock
+        // even if customer.subscription.* events aren't configured.
+        if (session.subscription) {
+          const subId =
+            typeof session.subscription === "string"
+              ? session.subscription
+              : session.subscription.id;
+          const sub = await stripe.subscriptions.retrieve(subId);
+          const userIdFromSub = getUserIdFromSubscription(sub) ?? userIdFromSession;
+          if (userIdFromSub) {
+            const status = sub.status;
+            const priceId =
+              sub.items.data[0]?.price?.id ??
+              (sub.metadata?.price_id as string | undefined) ??
+              STRIPE_PRICE_ID;
+
+            await upsertBillingCustomer({
+              userId: userIdFromSub,
+              stripeCustomerId: customerId ?? (typeof sub.customer === "string" ? sub.customer : sub.customer?.id) ?? null,
+              stripeSubscriptionId: sub.id,
+              subscriptionStatus: status,
+              priceId: priceId ?? null,
+              trialEnd: toIso(sub.trial_end),
+              currentPeriodEnd: null,
+            });
+          }
         }
         break;
       }
