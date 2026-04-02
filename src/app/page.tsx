@@ -226,15 +226,20 @@ export default function CreatePage() {
       }
 
       const styleForApi = resolveStyleForApi(style, customStyleText);
+      const isCustomVibe = style === CUSTOM_VIBE_ID;
       if (
         !title.trim() ||
         !subject.trim() ||
         !keyPoints.trim() ||
         !style ||
         !styleForApi ||
-        !artistId
+        (!isCustomVibe && !artistId)
       ) {
-        setError("Please fill in all fields, choose a vibe, and pick an inspiration.");
+        setError(
+          isCustomVibe
+            ? "Please fill in all fields and describe your custom style."
+            : "Please fill in all fields, choose a vibe, and pick an inspiration."
+        );
         return;
       }
 
@@ -249,8 +254,9 @@ export default function CreatePage() {
             subject: subject.trim(),
             keyPoints: keyPoints.trim(),
             style: styleForApi,
-            artistId,
+            artistId: isCustomVibe ? "" : artistId,
             vocalGender,
+            customVibe: isCustomVibe,
           }),
         });
         const data = await res.json();
@@ -619,9 +625,9 @@ export default function CreatePage() {
               onCustomTextChange={setCustomStyleText}
             />
 
-            {style ? (
+            {style && style !== CUSTOM_VIBE_ID ? (
               <ArtistInspirationPicker
-                vibeId={style === CUSTOM_VIBE_ID ? CUSTOM_VIBE_ID : style}
+                vibeId={style}
                 value={artistId}
                 onChange={(id) => {
                   setArtistId(id);

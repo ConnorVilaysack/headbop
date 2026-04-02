@@ -33,21 +33,41 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, subject, keyPoints, style, vocalGender, artistId } = body;
+    const {
+      title,
+      subject,
+      keyPoints,
+      style,
+      vocalGender,
+      artistId,
+      customVibe,
+    } = body;
 
-    if (!title || !subject || !keyPoints || !style || !artistId) {
+    if (!title || !subject || !keyPoints || !style) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const isCustom = Boolean(customVibe);
+
+    if (!isCustom && !artistId) {
       return NextResponse.json(
         { error: "Missing required fields (including inspiration)" },
         { status: 400 }
       );
     }
 
-    const artist = findArtist(style, artistId);
-    if (!artist) {
-      return NextResponse.json(
-        { error: "Invalid inspiration for this vibe" },
-        { status: 400 }
-      );
+    let artist: ReturnType<typeof findArtist> = undefined;
+    if (!isCustom) {
+      artist = findArtist(style, artistId);
+      if (!artist) {
+        return NextResponse.json(
+          { error: "Invalid inspiration for this vibe" },
+          { status: 400 }
+        );
+      }
     }
 
     const apiKey = process.env.KIE_API_KEY;
@@ -62,15 +82,31 @@ export async function POST(request: NextRequest) {
     const musicCallbackUrl = `${baseUrl}/api/callback`;
     const lyricsCallbackUrl = `${baseUrl}/api/callback/lyrics`;
 
-    const styleLabel = getVibeLabel(style);
     const usedPoints = normalizeKeyPoints(keyPoints);
 
-    const lyricsPrompt = buildLyricsApiPrompt({
-      styleLabel,
-      subject,
-      keyPoints,
-      referenceStyle: artist.referenceStyle,
-    });
+    const rawCustom = isCustom ? String(style).trim() : "";
+    if (isCustom && !rawCustom) {
+      return NextResponse.json(
+        { error: "Custom style description is empty" },
+        { status: 400 }
+      );
+    }
+
+    const styleLabel = getVibeLabel(style);
+
+    const lyricsPrompt = isCustom
+      ? buildLyricsApiPrompt({
+          styleLabel: rawCustom.slice(0, 100),
+          subject,
+          keyPoints,
+          referenceStyle: rawCustom.length > 100 ? rawCustom.slice(100, 220) : "",
+        })
+      : buildLyricsApiPrompt({
+          styleLabel,
+          subject,
+          keyPoints,
+          referenceStyle: artist!.referenceStyle,
+        });
 
     const firstLyricsTaskId = await startLyricsTask({
       apiKey,
@@ -86,11 +122,17 @@ export async function POST(request: NextRequest) {
     let winningLyricsTaskId = firstLyricsTaskId;
 
     if (isLyricsLikelyIncomplete(lyricsText)) {
-      const retryPrompt = buildLyricsRetryPrompt({
-        styleLabel,
-        subject,
-        referenceStyle: artist.referenceStyle,
-      });
+      const retryPrompt = isCustom
+        ? buildLyricsRetryPrompt({
+            styleLabel: rawCustom.slice(0, 55),
+            subject,
+            referenceStyle: rawCustom.slice(55, 155),
+          })
+        : buildLyricsRetryPrompt({
+            styleLabel,
+            subject,
+            referenceStyle: artist!.referenceStyle,
+          });
       const retryTaskId = await startLyricsTask({
         apiKey,
         prompt: retryPrompt,
@@ -107,10 +149,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const musicStyle = `${styleLabel}, ${artist.referenceStyle}`.slice(
-      0,
-      MUSIC_STYLE_MAX
-    );
+    const musicStyle = isCustom
+      ? rawCustom.slice(0, MUSIC_STYLE_MAX)
+      : `${styleLabel}, ${artist!.referenceStyle}`.slice(0, MUSIC_STYLE_MAX);
 
     const kiePayload: Record<string, unknown> = {
       prompt: lyricsText,
@@ -127,7 +168,7 @@ export async function POST(request: NextRequest) {
 
     let vg: "m" | "f" | undefined;
     if (vocalGender === "m" || vocalGender === "f") vg = vocalGender;
-    else if (artist.suggestedVocal) vg = artist.suggestedVocal;
+    else if (!isCustom && artist?.suggestedVocal) vg = artist.suggestedVocal;
     if (vg) kiePayload.vocalGender = vg;
 
     const kieResponse = await fetch(KIE_GENERATE_URL, {
@@ -162,7 +203,7 @@ export async function POST(request: NextRequest) {
       subject,
       keyPoints,
       style,
-      artistInspiration: artist.title,
+      artistInspiration: isCustom ? null : artist!.title,
       prompt: lyricsText,
       taskId,
       status: "generating",
@@ -184,8 +225,8 @@ export async function POST(request: NextRequest) {
       lyricsSuggestedTitle: suggestedTitle ?? null,
       lyricsPreview: lyricsText.slice(0, 1200),
       usedPoints,
-      artistTitle: artist.title,
-      referenceStyle: artist.referenceStyle,
+      artistTitle: isCustom ? "Custom style" : artist!.title,
+      referenceStyle: isCustom ? rawCustom : artist!.referenceStyle,
     };
 
     return NextResponse.json({ song, taskId, requestPreview });

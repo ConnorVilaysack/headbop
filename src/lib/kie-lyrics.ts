@@ -72,7 +72,10 @@ export function buildLyricsRetryPrompt(opts: {
   subject: string;
   referenceStyle: string;
 }): string {
-  const s = `${opts.styleLabel} about ${opts.subject}. ${opts.referenceStyle}. Full song with [Outro]—do not end at bridge.`;
+  const ref = opts.referenceStyle?.trim();
+  const s = ref
+    ? `${opts.styleLabel} about ${opts.subject}. ${ref}. Full song with [Outro]—do not end at bridge.`
+    : `${opts.styleLabel} about ${opts.subject}. Full song with [Outro]—do not end at bridge.`;
   return s.slice(0, KIE_LYRICS_PROMPT_MAX);
 }
 
@@ -88,7 +91,10 @@ export function buildLyricsApiPrompt(opts: {
   const points = normalizeKeyPoints(opts.keyPoints);
   const gist = points.join("; ") || opts.keyPoints.trim().slice(0, 80);
   const structure = "V,C,Br,C,Out";
-  const prefix = `${opts.styleLabel} ${structure} about ${opts.subject}. ${opts.referenceStyle}. `;
+  const ref = opts.referenceStyle?.trim();
+  const prefix = ref
+    ? `${opts.styleLabel} ${structure} about ${opts.subject}. ${ref}. `
+    : `${opts.styleLabel} ${structure} about ${opts.subject}. `;
   let body = gist;
   let out = prefix + body;
   if (out.length <= KIE_LYRICS_PROMPT_MAX) return out;
