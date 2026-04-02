@@ -9,7 +9,11 @@ import {
   loadCreateFormDraft,
   saveCreateFormDraft,
 } from "@/lib/create-form-draft";
-import { getVibeLabel } from "@/lib/vibes";
+import {
+  CUSTOM_VIBE_ID,
+  getVibeLabel,
+  resolveStyleForApi,
+} from "@/lib/vibes";
 import { VoiceSelector } from "@/components/VoiceSelector";
 import { GeneratingAnimation } from "@/components/GeneratingAnimation";
 import { AudioPlayer } from "@/components/AudioPlayer";
@@ -53,6 +57,7 @@ export default function CreatePage() {
   const [subject, setSubject] = useState("");
   const [keyPoints, setKeyPoints] = useState("");
   const [style, setStyle] = useState("");
+  const [customStyleText, setCustomStyleText] = useState("");
   const [artistId, setArtistId] = useState("");
   const [vocalGender, setVocalGender] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -88,6 +93,7 @@ export default function CreatePage() {
       d.subject.trim() ||
       d.keyPoints.trim() ||
       d.style ||
+      d.customStyleText?.trim() ||
       d.artistId;
     if (!hasContent) return;
     draftRestoreDone.current = true;
@@ -95,6 +101,7 @@ export default function CreatePage() {
     setSubject(d.subject);
     setKeyPoints(d.keyPoints);
     setStyle(d.style);
+    setCustomStyleText(d.customStyleText ?? "");
     setArtistId(d.artistId);
     setVocalGender(d.vocalGender);
     setRestoredDraftNotice(true);
@@ -164,6 +171,7 @@ export default function CreatePage() {
   const handleStyleChange = useCallback((v: string) => {
     setStyle(v);
     setArtistId("");
+    if (v !== CUSTOM_VIBE_ID) setCustomStyleText("");
   }, []);
 
   const pollStatus = useCallback(
@@ -212,7 +220,20 @@ export default function CreatePage() {
         return;
       }
 
-      if (!title.trim() || !subject.trim() || !keyPoints.trim() || !style || !artistId) {
+      if (style === CUSTOM_VIBE_ID && !customStyleText.trim()) {
+        setError("Describe your custom style in a few words.");
+        return;
+      }
+
+      const styleForApi = resolveStyleForApi(style, customStyleText);
+      if (
+        !title.trim() ||
+        !subject.trim() ||
+        !keyPoints.trim() ||
+        !style ||
+        !styleForApi ||
+        !artistId
+      ) {
         setError("Please fill in all fields, choose a vibe, and pick an inspiration.");
         return;
       }
@@ -227,7 +248,7 @@ export default function CreatePage() {
             title: title.trim(),
             subject: subject.trim(),
             keyPoints: keyPoints.trim(),
-            style,
+            style: styleForApi,
             artistId,
             vocalGender,
           }),
@@ -246,7 +267,17 @@ export default function CreatePage() {
         setIsGenerating(false);
       }
     },
-    [entitled, title, subject, keyPoints, style, artistId, vocalGender, pollStatus]
+    [
+      entitled,
+      title,
+      subject,
+      keyPoints,
+      style,
+      customStyleText,
+      artistId,
+      vocalGender,
+      pollStatus,
+    ]
   );
 
   const handleReset = useCallback(() => {
@@ -256,6 +287,7 @@ export default function CreatePage() {
     setSubject("");
     setKeyPoints("");
     setStyle("");
+    setCustomStyleText("");
     setArtistId("");
     setVocalGender("");
     setGeneratedSong(null);
@@ -580,11 +612,16 @@ export default function CreatePage() {
             </div>
 
             {/* Style Selector */}
-            <StyleSelector value={style} onChange={handleStyleChange} />
+            <StyleSelector
+              value={style}
+              customText={customStyleText}
+              onChange={handleStyleChange}
+              onCustomTextChange={setCustomStyleText}
+            />
 
             {style ? (
               <ArtistInspirationPicker
-                vibeId={style}
+                vibeId={style === CUSTOM_VIBE_ID ? CUSTOM_VIBE_ID : style}
                 value={artistId}
                 onChange={(id) => {
                   setArtistId(id);
@@ -673,6 +710,7 @@ export default function CreatePage() {
                           subject,
                           keyPoints,
                           style,
+                          customStyleText,
                           artistId,
                           vocalGender,
                         });

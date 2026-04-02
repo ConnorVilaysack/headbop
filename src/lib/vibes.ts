@@ -1,3 +1,9 @@
+/** UI-only: user describes style in a text field; API receives `resolveStyleForApi` output. */
+export const CUSTOM_VIBE_ID = "custom" as const;
+
+/** Custom vibe text box — long enough for rich style + production notes (aligned with KIE style budget). */
+export const CUSTOM_STYLE_MAX_CHARS = 1000;
+
 /** Vibe id stored on Song + sent to KIE `style` as the label only. */
 export const VIBES = [
   { id: "rap", label: "Rap" },
@@ -29,4 +35,10 @@ export type VibeId = (typeof VIBES)[number]["id"];
 export function getVibeLabel(id: string): string {
   const v = VIBES.find((x) => x.id === id);
   return v?.label ?? id;
+}
+
+/** Maps UI selection to the string stored on Song and sent to `/api/generate` as `style`. */
+export function resolveStyleForApi(style: string, customLabel: string): string {
+  if (style === CUSTOM_VIBE_ID) return customLabel.trim();
+  return style;
 }

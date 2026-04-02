@@ -1,10 +1,12 @@
-const KEY = "headbop:create-form-draft-v1";
+const KEY = "headbop:create-form-draft-v2";
 
 export type CreateFormDraft = {
   title: string;
   subject: string;
   keyPoints: string;
   style: string;
+  /** When `style === "custom"`, user’s own vibe description */
+  customStyleText: string;
   artistId: string;
   vocalGender: string;
 };
@@ -29,6 +31,8 @@ export function loadCreateFormDraft(): CreateFormDraft | null {
       subject: typeof j.subject === "string" ? j.subject : "",
       keyPoints: typeof j.keyPoints === "string" ? j.keyPoints : "",
       style: typeof j.style === "string" ? j.style : "",
+      customStyleText:
+        typeof j.customStyleText === "string" ? j.customStyleText : "",
       artistId: typeof j.artistId === "string" ? j.artistId : "",
       vocalGender: typeof j.vocalGender === "string" ? j.vocalGender : "",
     };
