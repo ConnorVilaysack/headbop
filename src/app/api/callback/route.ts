@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
       const track = tracks[0];
       const audioUrl =
         (typeof track.audio_url === "string" ? track.audio_url : null) ??
-        (typeof track.audioUrl === "string" ? track.audioUrl : null) ??
+        (typeof track.audioUrl === "string" ? track.audioUrl : null);
+      const streamAudioUrl =
         (typeof track.stream_audio_url === "string"
           ? track.stream_audio_url
           : null) ??
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
       const imageUrl =
         (typeof track.image_url === "string" ? track.image_url : null) ??
         (typeof track.imageUrl === "string" ? track.imageUrl : null);
+      const audioId =
+        (typeof track.id === "string" ? track.id : null) ??
+        (typeof track.audio_id === "string" ? track.audio_id : null);
       const lyrics =
         typeof track.prompt === "string"
           ? track.prompt
@@ -55,11 +59,22 @@ export async function POST(request: NextRequest) {
 
       await updateSongByTask(taskId, {
         audioUrl,
+        streamAudioUrl,
         imageUrl,
         lyrics,
         duration,
         status: "completed",
       });
+
+      // Store KIE's audioId separately so the callback doesn't fail
+      // if the DB hasn't been migrated yet.
+      if (audioId) {
+        try {
+          await updateSongByTask(taskId, { audioId });
+        } catch (e) {
+          console.warn("Failed to store audioId (missing column?)", e);
+        }
+      }
     }
 
     return NextResponse.json({ code: 200, msg: "success" });

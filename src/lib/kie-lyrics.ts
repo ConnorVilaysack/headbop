@@ -14,6 +14,33 @@ function normalizeKeyPoints(raw: string): string[] {
     .slice(0, 6);
 }
 
+function compressPoint(p: string): string {
+  const clean = p.replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  const lower = clean.toLowerCase();
+  // Tiny “meaning anchors” that survive the 200-char budget better than full sentences.
+  if (lower.includes("sunlight") && (lower.includes("food") || lower.includes("make"))) {
+    return "sunlight→food";
+  }
+  if (lower.includes("water") && (lower.includes("air") || lower.includes("carbon"))) {
+    return "water+CO2 energy";
+  }
+  if (lower.includes("sugar") && (lower.includes("grow") || lower.includes("growth"))) {
+    return "make sugar grow";
+  }
+  if (lower.includes("oxygen") && (lower.includes("breathe") || lower.includes("breath"))) {
+    return "oxygen to breathe";
+  }
+  if (lower.includes("healthy") || lower.includes("alive")) {
+    return "keeps alive";
+  }
+
+  // Fallback: first few words.
+  const words = clean.split(" ").filter(Boolean);
+  const token = words.slice(0, 4).join(" ");
+  return token.length > 22 ? token.slice(0, 22).trimEnd() : token;
+}
+
 /** Prefer longer, structurally complete lyric sets (API often returns 2–3 variations). */
 export function scoreLyricsCompleteness(text: string): number {
   const t = text.trim();
@@ -71,12 +98,32 @@ export function buildLyricsRetryPrompt(opts: {
   styleLabel: string;
   subject: string;
   referenceStyle: string;
+  keyPoints: string;
 }): string {
+  const points = normalizeKeyPoints(opts.keyPoints);
+
+  // Compress each point so the prompt can always contain the whole list
+  // inside the ~200 character budget.
+  const pointTokens = points.map(compressPoint).filter(Boolean);
+  const pointsList = pointTokens.length
+    ? pointTokens.join(", ")
+    : opts.keyPoints.trim().slice(0, 60);
+
   const ref = opts.referenceStyle?.trim();
-  const s = ref
-    ? `${opts.styleLabel} about ${opts.subject}. ${ref}. Full song with [Outro]—do not end at bridge.`
-    : `${opts.styleLabel} about ${opts.subject}. Full song with [Outro]—do not end at bridge.`;
-  return s.slice(0, KIE_LYRICS_PROMPT_MAX);
+  // Reference style in the lyrics prompt is optional; we keep it short
+  // so the model still receives the full key-point list.
+  const shortRef = ref ? ref.slice(0, 40).trimEnd() : "";
+  const stylePart = shortRef
+    ? `${opts.styleLabel} V,C,Br,C,Out about ${opts.subject}. ${shortRef}. `
+    : `${opts.styleLabel} V,C,Br,C,Out about ${opts.subject}. `;
+
+  const tail =
+    "Key points: " +
+    pointsList +
+    ". Lyrics must mention each point, and include [Outro] (do not end at bridge).";
+
+  const out = (stylePart + tail).slice(0, KIE_LYRICS_PROMPT_MAX).trimEnd();
+  return out;
 }
 
 /**
@@ -89,21 +136,30 @@ export function buildLyricsApiPrompt(opts: {
   referenceStyle: string;
 }): string {
   const points = normalizeKeyPoints(opts.keyPoints);
-  const gist = points.join("; ") || opts.keyPoints.trim().slice(0, 80);
-  const structure = "V,C,Br,C,Out";
   const ref = opts.referenceStyle?.trim();
-  const prefix = ref
-    ? `${opts.styleLabel} ${structure} about ${opts.subject}. ${ref}. `
-    : `${opts.styleLabel} ${structure} about ${opts.subject}. `;
-  let body = gist;
-  let out = prefix + body;
-  if (out.length <= KIE_LYRICS_PROMPT_MAX) return out;
-  const room = KIE_LYRICS_PROMPT_MAX - prefix.length;
-  if (room < 10) {
-    return prefix.slice(0, KIE_LYRICS_PROMPT_MAX);
+
+  // Key points MUST dominate the 200-char budget. Style is a hint.
+  const structure = "V,C,Br,C,Out";
+  const pointTokens = points.map(compressPoint).filter(Boolean);
+  const pointsList = pointTokens.length
+    ? pointTokens.join(", ")
+    : opts.keyPoints.trim().slice(0, 80);
+
+  // Build in “layers” so we can drop style details first if we run out of room.
+  const base = `${opts.styleLabel} ${structure} about ${opts.subject}. `;
+  const key = `Key points: ${pointsList}. `;
+  const must = "Mention EACH point clearly (kid-friendly).";
+
+  // Optional style flavour – only include if there is room after key points.
+  const refShort = ref ? ` Style: ${ref.slice(0, 40).trimEnd()}.` : "";
+
+  let out = (base + key + must).slice(0, KIE_LYRICS_PROMPT_MAX).trimEnd();
+  if (refShort) {
+    const candidate = (base + key + must + refShort).slice(0, KIE_LYRICS_PROMPT_MAX).trimEnd();
+    // Only use ref if it doesn't push key points off the end.
+    if (candidate.includes("Key points:")) out = candidate;
   }
-  body = gist.slice(0, room - 3) + "...";
-  return (prefix + body).slice(0, KIE_LYRICS_PROMPT_MAX);
+  return out;
 }
 
 export async function startLyricsTask(opts: {

@@ -12,6 +12,8 @@ create table if not exists public.songs (
   prompt text not null,
   lyrics text null,
   audio_url text null,
+  stream_audio_url text null,
+  audio_id text null,
   image_url text null,
   duration double precision null,
   task_id text unique null,

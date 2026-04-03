@@ -27,14 +27,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-black text-white relative overflow-x-hidden">
-        {/* Single soft purple glow — centered behind content */}
-        <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
-          <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[80%] h-[60%] rounded-full bg-purple/[0.07] blur-[160px]" />
-        </div>
-
+      <body className="min-h-full flex flex-col bg-[#f7f5ef] text-stone-800 relative overflow-x-hidden">
         <div className="relative z-10 flex flex-col min-h-full">
           <Navbar />
           <main className="flex-1">{children}</main>

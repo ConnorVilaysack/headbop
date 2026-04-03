@@ -12,6 +12,8 @@ export type MusicTaskSyncOutcome =
   | {
       kind: "updated";
       audioUrl: string | null;
+      streamAudioUrl: string | null;
+      audioId: string | null;
       imageUrl: string | null;
       lyrics: string | null;
       duration: number | null;
@@ -20,6 +22,8 @@ export type MusicTaskSyncOutcome =
 
 function firstPlayableTrack(sunoData: unknown): {
   audioUrl: string | null;
+  streamAudioUrl: string | null;
+  audioId: string | null;
   imageUrl: string | null;
   lyrics: string | null;
   duration: number | null;
@@ -31,13 +35,21 @@ function firstPlayableTrack(sunoData: unknown): {
       const a = t.audioUrl ?? t.audio_url;
       return typeof a === "string" && a.length > 0;
     }) ?? rows[0];
-  const audioRaw =
+  const audioUrl =
     (withAudio.audioUrl as string | undefined) ??
     (withAudio.audio_url as string | undefined) ??
+    null;
+  const streamAudioUrl =
     (withAudio.streamAudioUrl as string | undefined) ??
     (withAudio.stream_audio_url as string | undefined) ??
-    "";
-  const audioUrl = audioRaw || null;
+    null;
+  const audioId =
+    (typeof withAudio.id === "string" && withAudio.id.length > 0
+      ? (withAudio.id as string)
+      : null) ??
+    (typeof withAudio.audioId === "string" && withAudio.audioId.length > 0
+      ? (withAudio.audioId as string)
+      : null);
   const imageUrl =
     ((withAudio.imageUrl ?? withAudio.image_url) as string | undefined) || null;
   const lyrics =
@@ -47,7 +59,7 @@ function firstPlayableTrack(sunoData: unknown): {
     typeof durationRaw === "number" && !Number.isNaN(durationRaw)
       ? durationRaw
       : null;
-  return { audioUrl, imageUrl, lyrics, duration };
+  return { audioUrl, streamAudioUrl, audioId, imageUrl, lyrics, duration };
 }
 
 /**
@@ -88,6 +100,8 @@ export async function syncMusicTaskFromKie(
     return {
       kind: "updated",
       audioUrl: null,
+      streamAudioUrl: null,
+      audioId: null,
       imageUrl: null,
       lyrics: null,
       duration: null,
@@ -103,6 +117,8 @@ export async function syncMusicTaskFromKie(
     return {
       kind: "updated",
       audioUrl: track.audioUrl,
+      streamAudioUrl: track.streamAudioUrl,
+      audioId: track.audioId,
       imageUrl: track.imageUrl,
       lyrics: track.lyrics,
       duration: track.duration,
@@ -115,6 +131,8 @@ export async function syncMusicTaskFromKie(
       return {
         kind: "updated",
         audioUrl: null,
+        streamAudioUrl: track.streamAudioUrl,
+        audioId: track.audioId,
         imageUrl: track.imageUrl,
         lyrics: track.lyrics,
         duration: track.duration,
@@ -125,6 +143,8 @@ export async function syncMusicTaskFromKie(
       return {
         kind: "updated",
         audioUrl: null,
+        streamAudioUrl: null,
+        audioId: null,
         imageUrl: null,
         lyrics: null,
         duration: null,

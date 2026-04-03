@@ -1,7 +1,6 @@
 const KEY = "headbop:create-form-draft-v2";
 
 export type CreateFormDraft = {
-  title: string;
   subject: string;
   keyPoints: string;
   style: string;
@@ -27,7 +26,6 @@ export function loadCreateFormDraft(): CreateFormDraft | null {
     if (!raw) return null;
     const j = JSON.parse(raw) as Record<string, unknown>;
     return {
-      title: typeof j.title === "string" ? j.title : "",
       subject: typeof j.subject === "string" ? j.subject : "",
       keyPoints: typeof j.keyPoints === "string" ? j.keyPoints : "",
       style: typeof j.style === "string" ? j.style : "",

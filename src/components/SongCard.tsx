@@ -52,6 +52,8 @@ function formatSongDateUtc(iso: string): string {
 
 export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
   const styleLabel = getVibeLabel(song.style);
+  const stylePill =
+    styleLabel.length > 26 ? `${styleLabel.slice(0, 26).trimEnd()}…` : styleLabel;
 
   return (
     <div
@@ -60,7 +62,7 @@ export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
     >
       <Link
         href={`/song/${song.id}`}
-        className="block relative bg-[#0A0A0A] rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition-all duration-500 overflow-hidden hover:shadow-[0_8px_40px_rgba(85,37,131,0.12)] hover:-translate-y-1"
+        className="block relative bg-white/80 rounded-xl border border-stone-300/90 hover:border-stone-400 transition-all duration-500 overflow-hidden hover:shadow-md hover:-translate-y-0.5"
       >
         {/* Cover */}
         <div className="relative h-40 overflow-hidden">
@@ -84,20 +86,20 @@ export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
             </div>
           )}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-900/40 via-transparent to-transparent" />
 
-          <div className="absolute top-3 right-3 px-2.5 py-1 bg-black/50 backdrop-blur-md rounded-full border border-white/[0.08] text-[11px] text-white/70 font-medium">
-            {styleLabel}
+          <div className="absolute top-3 right-3 max-w-[70%] px-2.5 py-1 bg-white/90 backdrop-blur-sm rounded-full border border-stone-200 text-[11px] text-stone-700 font-medium shadow-sm truncate">
+            {stylePill}
           </div>
         </div>
 
         {/* Content */}
         <div className="p-4 space-y-3">
           <div>
-            <h3 className="font-semibold text-white truncate">{song.title}</h3>
-            <p className="text-sm text-white/40 truncate">{song.subject}</p>
+            <h3 className="font-semibold text-stone-900 truncate">{song.title}</h3>
+            <p className="text-sm text-stone-600 truncate">{song.subject}</p>
             {song.artistInspiration ? (
-              <p className="text-xs text-white/30 truncate mt-0.5">{song.artistInspiration}</p>
+              <p className="text-xs text-stone-500 truncate mt-0.5">{song.artistInspiration}</p>
             ) : null}
           </div>
 
@@ -114,14 +116,14 @@ export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
                   />
                 ))}
               </div>
-              <span className="text-xs text-white/40">Generating...</span>
+              <span className="text-xs text-stone-500">Generating...</span>
             </div>
           ) : song.status === "failed" ? (
             <p className="text-sm text-red-400">Generation failed</p>
           ) : null}
 
-          <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
-            <span className="text-[11px] text-white/25">
+          <div className="flex items-center justify-between pt-2 border-t border-stone-200">
+            <span className="text-[11px] text-stone-400">
               {formatSongDateUtc(song.createdAt)}
             </span>
             {onDelete && (
@@ -131,7 +133,7 @@ export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
                   e.stopPropagation();
                   onDelete(song.id);
                 }}
-                className="text-[11px] text-white/20 hover:text-red-400 transition-colors duration-200 cursor-pointer opacity-0 group-hover:opacity-100"
+                className="text-[11px] text-stone-400 hover:text-red-600 transition-colors duration-200 cursor-pointer opacity-0 group-hover:opacity-100"
               >
                 Delete
               </button>

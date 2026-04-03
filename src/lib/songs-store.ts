@@ -12,6 +12,8 @@ type SongRow = {
   prompt: string;
   lyrics: string | null;
   audio_url: string | null;
+  stream_audio_url: string | null;
+  audio_id: string | null;
   image_url: string | null;
   duration: number | null;
   task_id: string | null;
@@ -31,6 +33,8 @@ export type Song = {
   prompt: string;
   lyrics: string | null;
   audioUrl: string | null;
+  streamAudioUrl: string | null;
+  audioId: string | null;
   imageUrl: string | null;
   duration: number | null;
   taskId: string | null;
@@ -51,6 +55,8 @@ function toSong(row: SongRow): Song {
     prompt: row.prompt,
     lyrics: row.lyrics,
     audioUrl: row.audio_url,
+    streamAudioUrl: row.stream_audio_url,
+    audioId: row.audio_id,
     imageUrl: row.image_url,
     duration: row.duration,
     taskId: row.task_id,
@@ -153,6 +159,8 @@ export async function updateSongByTask(
   taskId: string,
   patch: Partial<{
     audioUrl: string | null;
+    streamAudioUrl: string | null;
+    audioId: string | null;
     imageUrl: string | null;
     lyrics: string | null;
     duration: number | null;
@@ -162,6 +170,8 @@ export async function updateSongByTask(
   const supabase = adminClient();
   const update: Record<string, unknown> = {};
   if ("audioUrl" in patch) update.audio_url = patch.audioUrl;
+  if ("streamAudioUrl" in patch) update.stream_audio_url = patch.streamAudioUrl;
+  if ("audioId" in patch) update.audio_id = patch.audioId;
   if ("imageUrl" in patch) update.image_url = patch.imageUrl;
   if ("lyrics" in patch) update.lyrics = patch.lyrics;
   if ("duration" in patch) update.duration = patch.duration;

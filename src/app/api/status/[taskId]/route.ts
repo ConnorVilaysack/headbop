@@ -31,6 +31,8 @@ export async function GET(
       if (outcome.kind === "updated") {
         await updateSongByTask(taskId, {
           audioUrl: outcome.audioUrl,
+          streamAudioUrl: outcome.streamAudioUrl,
+          audioId: outcome.audioId,
           imageUrl: outcome.imageUrl,
           lyrics: outcome.lyrics,
           duration: outcome.duration,
