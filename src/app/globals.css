@@ -76,18 +76,178 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(253, 185, 39, 0.25) transparent;
+  scrollbar-color: rgba(85, 37, 131, 0.25) transparent;
 }
 
 body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--paper-bg, #f7f5ef);
+  color: var(--paper-ink, #292524);
   font-family: var(--font-sans, system-ui, sans-serif);
 }
 
 ::selection {
-  background: rgba(253, 185, 39, 0.35);
-  color: white;
+  background: rgba(85, 37, 131, 0.2);
+  color: #1c1917;
+}
+
+/* ── Glass button (easemize / 21st.dev style) ── */
+.glass-button-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.glass-button-shadow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: linear-gradient(
+    125deg,
+    rgba(253, 185, 39, 0.5),
+    rgba(139, 95, 191, 0.42)
+  );
+  filter: blur(20px);
+  opacity: 0.5;
+  transform: scale(0.86) translateY(11px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.glass-button-wrap:hover:not(.glass-button-wrap--disabled) .glass-button-shadow {
+  opacity: 0.68;
+  transform: scale(0.9) translateY(9px);
+}
+
+.glass-button-wrap--disabled .glass-button-shadow {
+  opacity: 0.22;
+  transform: scale(0.86) translateY(11px);
+}
+
+.glass-button {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  border-radius: 9999px;
+  color: #1c1917;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.48) 0%,
+    rgba(255, 255, 255, 0.22) 45%,
+    rgba(255, 255, 255, 0.36) 100%
+  );
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(85, 37, 131, 0.05),
+    0 2px 16px rgba(0, 0, 0, 0.06);
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
+}
+
+.glass-button:hover:not(:disabled) {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.58) 0%,
+    rgba(255, 255, 255, 0.3) 45%,
+    rgba(255, 255, 255, 0.46) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 8px 32px rgba(85, 37, 131, 0.1);
+}
+
+.glass-button:active:not(:disabled) {
+  transform: scale(0.993);
+}
+
+.glass-button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.glass-button-text {
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+/* ── Create page: infinite grid + spotlight (CSS only — hydrates cleanly) ── */
+.create-page-bg {
+  --spot-x: 50%;
+  --spot-y: 50%;
+}
+
+.create-page-bg-grid {
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(100, 116, 139, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.22) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: create-page-bg-drift 2.5s linear infinite;
+  opacity: 0.09;
+}
+
+.create-page-bg-grid-spot {
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(71, 85, 105, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(71, 85, 105, 0.35) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: create-page-bg-drift 2.5s linear infinite;
+  opacity: 0.42;
+  -webkit-mask-image: radial-gradient(
+    320px circle at var(--spot-x) var(--spot-y),
+    #000 0%,
+    transparent 70%
+  );
+  mask-image: radial-gradient(
+    320px circle at var(--spot-x) var(--spot-y),
+    #000 0%,
+    transparent 70%
+  );
+}
+
+@keyframes create-page-bg-drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 40px 40px, 40px 40px;
+  }
+}
+
+/* Lined workbook paper: margin rule + horizontal rules */
+.bg-workbook {
+  --paper-bg: #f7f5ef;
+  --paper-line: rgba(100, 116, 139, 0.2);
+  --paper-margin: rgba(185, 60, 70, 0.32);
+  background-color: var(--paper-bg);
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 0,
+      transparent calc(2.75rem - 1px),
+      var(--paper-margin) calc(2.75rem - 1px),
+      var(--paper-margin) 2.75rem,
+      transparent 2.75rem
+    ),
+    linear-gradient(var(--paper-line) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    100% 1.75rem;
+  background-attachment: scroll;
 }
 
 /* ── Background Grid ── */
@@ -170,6 +330,73 @@ body {
   75% { height: 100%; }
 }
 
+/* Landing hero: smoother “sound wave” — scaleY from bottom, per-bar timing via CSS vars */
+@keyframes landing-eq-wave {
+  0% {
+    transform: scaleY(0.28);
+    filter: brightness(0.92);
+  }
+  18% {
+    transform: scaleY(0.72);
+    filter: brightness(1);
+  }
+  32% {
+    transform: scaleY(0.4);
+    filter: brightness(0.95);
+  }
+  48% {
+    transform: scaleY(1);
+    filter: brightness(1.05);
+  }
+  62% {
+    transform: scaleY(0.52);
+    filter: brightness(0.96);
+  }
+  78% {
+    transform: scaleY(0.88);
+    filter: brightness(1.02);
+  }
+  100% {
+    transform: scaleY(0.32);
+    filter: brightness(0.92);
+  }
+}
+
+.landing-eq-bars {
+  height: 3.25rem;
+  gap: 0.4rem;
+}
+
+.landing-eq-bar-track {
+  display: flex;
+  height: 100%;
+  width: 0.5rem;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.landing-eq-bar {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  transform-origin: bottom center;
+  border-radius: 9999px;
+  background: linear-gradient(
+    180deg,
+    rgba(155, 111, 212, 0.95) 0%,
+    rgba(85, 37, 131, 0.92) 45%,
+    rgba(58, 23, 100, 0.88) 100%
+  );
+  box-shadow:
+    0 0 10px rgba(85, 37, 131, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  animation-name: landing-eq-wave;
+  animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  animation-iteration-count: infinite;
+  animation-duration: var(--eq-dur, 1.05s);
+  animation-delay: var(--eq-delay, 0s);
+}
+
 @keyframes ring-pulse {
   0% { transform: scale(0.8); opacity: 0.6; }
   50% { transform: scale(1.1); opacity: 0.2; }
@@ -201,3 +428,91 @@ body {
 .animate-ring-pulse { animation: ring-pulse 2s ease-in-out infinite; }
 .animate-orbit { animation: orbit 6s linear infinite; }
 .animate-pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+
+/* Landing page: staggered entrance + playful motion (CSS-only, hydrates cleanly) */
+@keyframes landing-bob-slow {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+
+@keyframes wiggle-soft {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes landing-shine {
+  0% {
+    background-position: -120% 0;
+  }
+  100% {
+    background-position: 120% 0;
+  }
+}
+
+.animate-landing-in {
+  animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.animate-landing-bob {
+  animation: landing-bob-slow 5.5s ease-in-out infinite;
+}
+
+.animate-landing-wiggle {
+  animation: wiggle-soft 4s ease-in-out infinite;
+}
+
+.animate-landing-shine {
+  animation: landing-shine 8s ease-in-out infinite;
+  background-size: 200% 100%;
+}
+
+.landing-card-lift {
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s ease,
+    border-color 0.25s ease;
+}
+
+.landing-card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 18px 40px -12px rgba(85, 37, 131, 0.12),
+    0 8px 16px -8px rgba(0, 0, 0, 0.08);
+  border-color: rgba(85, 37, 131, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-landing-in,
+  .animate-landing-bob,
+  .animate-landing-wiggle,
+  .animate-landing-shine {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .landing-card-lift {
+    transition: none !important;
+  }
+
+  .landing-card-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .teacher-landing .landing-eq-bar {
+    animation: none !important;
+    transform: scaleY(0.55) !important;
+    filter: none !important;
+  }
+}

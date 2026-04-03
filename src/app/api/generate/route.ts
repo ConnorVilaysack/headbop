@@ -13,7 +13,44 @@ import {
 } from "@/lib/kie-lyrics";
 
 const KIE_GENERATE_URL = "https://api.kie.ai/api/v1/generate";
+// KIE docs (customMode=true, instrumental=false, model=V5):
+// - prompt (lyrics) max ~5000 chars
+// - style max ~1000 chars
+const KIE_GENERATE_PROMPT_MAX = 5000;
 const MUSIC_STYLE_MAX = 1000;
+
+async function startAndWaitForLyrics(opts: {
+  apiKey: string;
+  prompt: string;
+  callBackUrl: string;
+  attempts?: number;
+}): Promise<{ taskId: string; text: string; suggestedTitle?: string }> {
+  const attempts = opts.attempts ?? 3;
+  let lastErr: unknown = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const taskId = await startLyricsTask({
+        apiKey: opts.apiKey,
+        prompt: opts.prompt,
+        callBackUrl: opts.callBackUrl,
+      });
+      const out = await waitForLyricsResult({
+        apiKey: opts.apiKey,
+        taskId,
+      });
+      return { taskId, ...out };
+    } catch (e) {
+      lastErr = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      const transient =
+        /internal error/i.test(msg) || /try again later/i.test(msg) || /maintenance/i.test(msg);
+      if (!transient) break;
+      // small backoff on transient KIE errors
+      await new Promise((r) => setTimeout(r, 900 * Math.pow(1.7, i)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Lyrics generation failed");
+}
 
 function normalizeKeyPoints(raw: string): string[] {
   return raw
@@ -34,7 +71,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      title,
       subject,
       keyPoints,
       style,
@@ -43,7 +79,7 @@ export async function POST(request: NextRequest) {
       customVibe,
     } = body;
 
-    if (!title || !subject || !keyPoints || !style) {
+    if (!subject || !keyPoints || !style) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -94,12 +130,23 @@ export async function POST(request: NextRequest) {
 
     const styleLabel = getVibeLabel(style);
 
+    const customGenreHint = isCustom
+      ? (() => {
+          const first = rawCustom.split(",")[0]?.trim();
+          // keep it very short so key points fit in the 200-char lyrics prompt
+          return (first && first.length > 0 ? first : "Folk-pop").slice(0, 18);
+        })()
+      : "";
+
     const lyricsPrompt = isCustom
       ? buildLyricsApiPrompt({
-          styleLabel: rawCustom.slice(0, 100),
+          // In custom mode, don't let the user's long style paragraph eat the 200-char lyrics budget.
+          // Keep styleLabel short and push lesson points into the prompt.
+          styleLabel: `${customGenreHint} classroom song`,
           subject,
           keyPoints,
-          referenceStyle: rawCustom.length > 100 ? rawCustom.slice(100, 220) : "",
+          // Style prose belongs in /generate `style` (1000 char budget), not the /lyrics prompt.
+          referenceStyle: "",
         })
       : buildLyricsApiPrompt({
           styleLabel,
@@ -108,44 +155,41 @@ export async function POST(request: NextRequest) {
           referenceStyle: artist!.referenceStyle,
         });
 
-    const firstLyricsTaskId = await startLyricsTask({
+    const firstLyrics = await startAndWaitForLyrics({
       apiKey,
       prompt: lyricsPrompt,
       callBackUrl: lyricsCallbackUrl,
+      attempts: 5,
     });
 
-    let { text: lyricsText, suggestedTitle } = await waitForLyricsResult({
-      apiKey,
-      taskId: firstLyricsTaskId,
-    });
-
-    let winningLyricsTaskId = firstLyricsTaskId;
+    let lyricsText = firstLyrics.text;
+    let suggestedTitle = firstLyrics.suggestedTitle;
+    let winningLyricsTaskId = firstLyrics.taskId;
 
     if (isLyricsLikelyIncomplete(lyricsText)) {
       const retryPrompt = isCustom
         ? buildLyricsRetryPrompt({
-            styleLabel: rawCustom.slice(0, 55),
+            styleLabel: `${customGenreHint} classroom song`,
             subject,
-            referenceStyle: rawCustom.slice(55, 155),
+            referenceStyle: "",
+            keyPoints,
           })
         : buildLyricsRetryPrompt({
             styleLabel,
             subject,
             referenceStyle: artist!.referenceStyle,
+            keyPoints,
           });
-      const retryTaskId = await startLyricsTask({
+      const second = await startAndWaitForLyrics({
         apiKey,
         prompt: retryPrompt,
         callBackUrl: lyricsCallbackUrl,
-      });
-      const second = await waitForLyricsResult({
-        apiKey,
-        taskId: retryTaskId,
+        attempts: 4,
       });
       if (scoreLyricsCompleteness(second.text) > scoreLyricsCompleteness(lyricsText)) {
         lyricsText = second.text;
         suggestedTitle = second.suggestedTitle;
-        winningLyricsTaskId = retryTaskId;
+        winningLyricsTaskId = second.taskId;
       }
     }
 
@@ -153,10 +197,17 @@ export async function POST(request: NextRequest) {
       ? rawCustom.slice(0, MUSIC_STYLE_MAX)
       : `${styleLabel}, ${artist!.referenceStyle}`.slice(0, MUSIC_STYLE_MAX);
 
+    const finalTitle =
+      (suggestedTitle && suggestedTitle.trim().length > 0
+        ? suggestedTitle.trim()
+        : "New classroom song").slice(0, 80);
+
     const kiePayload: Record<string, unknown> = {
-      prompt: lyricsText,
+      // In custom mode, KIE uses `prompt` as the exact lyrics to sing.
+      // Keep within the documented max to avoid server-side truncation mid-verse.
+      prompt: lyricsText.slice(0, KIE_GENERATE_PROMPT_MAX).trimEnd(),
       style: musicStyle,
-      title,
+      title: finalTitle,
       customMode: true,
       instrumental: false,
       model: "V5",
@@ -199,7 +250,7 @@ export async function POST(request: NextRequest) {
 
     const song = await createSong({
       userId: user.id,
-      title,
+      title: finalTitle,
       subject,
       keyPoints,
       style,
@@ -232,8 +283,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ song, taskId, requestPreview });
   } catch (error) {
     console.error("Generate error:", error);
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    const isTransientKie =
+      /internal error/i.test(message) ||
+      /try again later/i.test(message) ||
+      /maintenance/i.test(message) ||
+      /rate/i.test(message);
+
+    return NextResponse.json(
+      {
+        error: isTransientKie
+          ? "KIE lyrics service is temporarily unavailable. Please try again in a moment."
+          : message,
+      },
+      { status: isTransientKie ? 502 : 500 }
+    );
   }
 }

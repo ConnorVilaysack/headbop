@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { posthogIdentify, posthogReset } from "@/lib/posthog-user";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { LogoMark } from "@/components/LogoMark";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -16,6 +17,19 @@ export function Navbar() {
   const [subLoading, setSubLoading] = useState(false);
   const [canManageBilling, setCanManageBilling] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [profileOpen]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -87,23 +101,14 @@ export function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-2xl bg-black/70 border-b border-white/[0.06]">
+    <nav className="sticky top-0 z-50 backdrop-blur-md bg-[#f7f5ef]/85 border-b border-stone-300/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-9 h-9">
-              <div className="absolute -inset-1 bg-gradient-to-br from-gold to-purple rounded-xl opacity-0 blur-md group-hover:opacity-50 transition-opacity duration-500" />
-              <div className="relative w-full h-full bg-gradient-to-br from-gold to-purple rounded-xl flex items-center justify-center">
-                <svg
-                  className="w-5 h-5 text-white drop-shadow-lg transition-transform duration-300 group-hover:scale-110"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                </svg>
-              </div>
+            <div className="transition-transform duration-300 group-hover:scale-105">
+              <LogoMark />
             </div>
-            <span className="text-xl font-bold tracking-tight text-white">
+            <span className="text-xl font-bold tracking-tight text-stone-900">
               headbop
             </span>
           </Link>
@@ -123,12 +128,9 @@ export function Navbar() {
             </NavLink>
             {email ? (
               <>
-                <div className="hidden sm:flex sm:items-center sm:gap-2 pr-1">
-                  <span className="text-xs text-white/40 max-w-[180px] truncate">
-                    {email}
-                  </span>
+                <div className="flex items-center gap-2 pr-0.5">
                   <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-white/[0.09] bg-white/[0.03] text-[10px] text-white/55"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-stone-300/80 bg-white/50 text-[10px] text-stone-600 shrink-0"
                     title={
                       subStatus === "trialing"
                         ? "Your 7‑day free trial is active."
@@ -140,14 +142,14 @@ export function Navbar() {
                     }
                   >
                     <span
-                      className={`w-1.5 h-1.5 rounded-full ${
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                         subLoading
-                          ? "bg-white/40 animate-pulse"
+                          ? "bg-stone-400 animate-pulse"
                           : subStatus === "active"
-                          ? "bg-emerald-400"
+                          ? "bg-emerald-500"
                           : subStatus === "trialing"
                           ? "bg-gold"
-                          : "bg-white/25"
+                          : "bg-stone-300"
                       }`}
                     />
                     {subLoading
@@ -161,41 +163,96 @@ export function Navbar() {
                       : "No plan"}
                   </span>
                 </div>
-                {canManageBilling ? (
+
+                <div className="relative shrink-0" ref={profileRef}>
                   <button
                     type="button"
-                    disabled={portalLoading}
-                    onClick={async () => {
-                      setPortalLoading(true);
-                      try {
-                        const res = await fetch("/api/stripe/portal", {
-                          method: "POST",
-                          credentials: "same-origin",
-                        });
-                        const j = await res.json();
-                        if (!res.ok) throw new Error(j?.error || "Could not open billing");
-                        if (j?.url) window.location.href = j.url;
-                        else throw new Error("No portal URL");
-                      } catch {
-                        setPortalLoading(false);
-                      }
-                    }}
-                    className="inline-flex relative items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-[11px] sm:text-xs font-medium transition-all duration-300 text-white/55 hover:text-white border border-white/[0.08] hover:border-white/[0.14] hover:bg-white/[0.04] cursor-pointer disabled:opacity-40 shrink-0"
-                    title="Cancel trial, update payment method, or manage subscription (Stripe Customer Portal)"
+                    aria-expanded={profileOpen}
+                    aria-haspopup="menu"
+                    onClick={() => setProfileOpen((o) => !o)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300/90 bg-white/60 px-3 py-2 text-sm font-medium text-stone-800 shadow-sm transition hover:bg-white hover:border-stone-400"
                   >
-                    <span className="sm:hidden">{portalLoading ? "…" : "Billing"}</span>
-                    <span className="hidden sm:inline">
-                      {portalLoading ? "Opening…" : "Manage billing"}
-                    </span>
+                    <svg
+                      className="h-5 w-5 text-stone-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.75}
+                      aria-hidden
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+                      />
+                    </svg>
+                    <span className="hidden sm:inline">Profile</span>
+                    <svg
+                      className={`h-4 w-4 text-stone-500 transition-transform ${profileOpen ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      aria-hidden
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={onSignOut}
-                  className="relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-white/50 hover:text-white cursor-pointer"
-                >
-                  Sign out
-                </button>
+
+                  {profileOpen ? (
+                    <div
+                      role="menu"
+                      aria-orientation="vertical"
+                      className="absolute right-0 z-[60] mt-2 w-[min(100vw-2rem,18rem)] rounded-xl border border-stone-200 bg-white py-2 shadow-lg ring-1 ring-black/5"
+                    >
+                      <div className="border-b border-stone-100 px-4 pb-3 pt-1">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
+                          Signed in as
+                        </p>
+                        <p className="mt-1 break-all text-sm text-stone-900">{email}</p>
+                      </div>
+                      <div className="flex flex-col py-1">
+                        {canManageBilling ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={portalLoading}
+                            onClick={async () => {
+                              setPortalLoading(true);
+                              setProfileOpen(false);
+                              try {
+                                const res = await fetch("/api/stripe/portal", {
+                                  method: "POST",
+                                  credentials: "same-origin",
+                                });
+                                const j = await res.json();
+                                if (!res.ok) throw new Error(j?.error || "Could not open billing");
+                                if (j?.url) window.location.href = j.url;
+                                else throw new Error("No portal URL");
+                              } catch {
+                                setPortalLoading(false);
+                              }
+                            }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-stone-800 transition hover:bg-stone-50 disabled:opacity-50"
+                          >
+                            {portalLoading ? "Opening…" : "Manage billing"}
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            void onSignOut();
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition hover:bg-stone-50"
+                        >
+                          Sign out
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </>
             ) : (
               <NavLink href="/auth" active={pathname === "/auth"}>
@@ -214,11 +271,11 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
     <Link
       href={href}
       className={`relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-        active ? "text-white" : "text-white/50 hover:text-white"
+        active ? "text-stone-900" : "text-stone-500 hover:text-stone-800"
       }`}
     >
       {active && (
-        <span className="absolute inset-0 rounded-lg bg-white/[0.06]" />
+        <span className="absolute inset-0 rounded-lg bg-white/70 border border-stone-200/80 shadow-sm" />
       )}
       <span className="relative flex items-center gap-1.5">{children}</span>
     </Link>
