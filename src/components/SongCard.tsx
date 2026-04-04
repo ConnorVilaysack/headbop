@@ -57,13 +57,18 @@ export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
 
   return (
     <div
-      className="group animate-fade-up"
+      className="group animate-fade-up relative bg-white/80 rounded-xl border border-stone-300/90 hover:border-stone-400 transition-all duration-500 overflow-hidden hover:shadow-md hover:-translate-y-0.5"
       style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
     >
+      {/* Full-card link as underlay — avoids <button> inside <a> (AudioPlayer / Delete), which breaks hydration */}
       <Link
         href={`/song/${song.id}`}
-        className="block relative bg-white/80 rounded-xl border border-stone-300/90 hover:border-stone-400 transition-all duration-500 overflow-hidden hover:shadow-md hover:-translate-y-0.5"
+        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-purple focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f5ef]"
+        aria-label={`Open song: ${song.title}`}
       >
+        <span className="sr-only">Open song: {song.title}</span>
+      </Link>
+      <div className="relative z-[1] pointer-events-none">
         {/* Cover */}
         <div className="relative h-40 overflow-hidden">
           {song.imageUrl ? (
@@ -104,7 +109,9 @@ export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
           </div>
 
           {song.audioUrl && song.status === "completed" ? (
-            <AudioPlayer src={song.audioUrl} title={song.title} compact />
+            <div className="pointer-events-auto">
+              <AudioPlayer src={song.audioUrl} title={song.title} compact />
+            </div>
           ) : song.status === "generating" ? (
             <div className="flex items-center gap-2">
               <div className="flex items-end gap-[2px] h-4">
@@ -126,21 +133,22 @@ export function SongCard({ song, onDelete, index = 0 }: SongCardProps) {
             <span className="text-[11px] text-stone-400">
               {formatSongDateUtc(song.createdAt)}
             </span>
-            {onDelete && (
+            {onDelete ? (
               <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   onDelete(song.id);
                 }}
-                className="text-[11px] text-stone-400 hover:text-red-600 transition-colors duration-200 cursor-pointer opacity-0 group-hover:opacity-100"
+                className="pointer-events-auto text-[11px] text-stone-400 hover:text-red-600 transition-colors duration-200 cursor-pointer opacity-0 group-hover:opacity-100"
               >
                 Delete
               </button>
-            )}
+            ) : null}
           </div>
         </div>
-      </Link>
+      </div>
     </div>
   );
 }

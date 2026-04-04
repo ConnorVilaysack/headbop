@@ -25,13 +25,21 @@ export default async function SongPage({
 
   return (
     <div className="max-w-3xl mx-auto pl-12 pr-6 sm:pl-16 sm:pr-10 py-10 sm:py-14">
-      <div className="mb-10">
+      <div className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link
           href="/library"
           className="text-sm text-stone-600 hover:text-stone-900 transition-colors"
         >
           ← Back to Library
         </Link>
+        {song.status === "completed" && song.audioUrl ? (
+          <a
+            href={`/api/songs/${id}/download`}
+            className="inline-flex items-center justify-center text-sm font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-gold to-gold-dark text-black shadow-sm hover:brightness-105 transition-all w-fit"
+          >
+            Download MP3
+          </a>
+        ) : null}
       </div>
 
       <div className="space-y-8 pb-12">

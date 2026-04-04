@@ -424,9 +424,7 @@ export default function CreatePage() {
             </button>
             {generatedSong.audioUrl && (
               <a
-                href={generatedSong.audioUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={`/api/songs/${generatedSong.id}/download`}
                 className="flex-1 px-6 py-3.5 bg-gradient-to-r from-gold to-gold-dark text-black font-semibold rounded-lg transition-all text-center shadow-sm hover:brightness-105"
               >
                 Download MP3
